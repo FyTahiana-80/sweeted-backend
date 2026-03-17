@@ -2,8 +2,12 @@ const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
 
+const verifierPermission = require('../middlewares/verifierPermission')
 const authMiddleware = require('../middlewares/authMiddleware');
-//Routes
+/*Routes*/
+
+//pour verifier si user peut creer des utilisateurs
+router.post('/create-user', authMiddleware, permissionMiddleware('create_user'), authController.createUser);
 
 // Pour inscription
 router.post('/register', authController.register);

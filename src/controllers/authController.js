@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 
 
-// Format personalisé pour matricule
+// Format personalisé pour le matricule
 const validateMatricule = (value) => {
     const regex = /^([0-9]{1,2})-([1-9][0-9]{4})\/25$/;
     if (!regex.test(value)){
@@ -51,7 +51,6 @@ exports.register = [
 
 
 
-
 exports.login = async (req, res) => {
     try{
         const { matricule_number, password } = req.body;
@@ -70,13 +69,41 @@ exports.login = async (req, res) => {
 
         // générer un Json Web Token
         const token = jwt.sign(
-            { matricule_number: user.matricule_number },
+            { matricule_number: user.matricule_number, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: '1h' }
         );
 
-        res.status(200).json({ token, message: "Connexion réussit !" });
-    } catch (error) {
+        res.status(200).json({ token,role: user.role, message: "Connexion réussit !" });
+    }catch (error){
         res.status(500).json({ message: "Erreur lors de la connexion.", error });
     }
 };
+
+
+//Creer un utilisateur (seulement pour les admins)
+exports.createUser = async (req, res) => {
+    try{
+        const{ matricule_number, password, role_id } = req.body;
+
+        // si utilisateur existe
+        const existingUser = await User.findByMatricule(matricule_number);
+
+        if (existingUser){
+            //mise a jour du role de l'utilisateur (s'il existe)
+            await pool.query('UPDATE users SET role_id = ? WHERE matricule_number = ?', [role_id, matricule_number]);
+            return res.status(200).json({ message: "Rôle de l'utilisateur mis à jour avec succès !" });
+        }
+
+        //hacher mot de passe
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        //creer utilisateur, avec le role donné
+        await User.create(matricule_number, hashedPassword, role_id);
+
+        res.status(201).json({ message: "Utilisateur créé avec succès !" });
+    }catch(error){
+        res.status(500).json({ message: "Erreur lors de la création de l'utilisateur.", error });
+    }
+};
+

@@ -1,0 +1,5 @@
+[user] = [ { id_role: 2 } ]
+
+ Ao am authRoutes: "/create-user" = requete POST ; "create_user" = permission ; "createUser" = fonction
+
+
