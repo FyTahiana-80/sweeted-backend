@@ -19,6 +19,10 @@ class User{
         return rows[0];
     }
 }
+/*
 
+mis à jour  de la mise à jour 
+
+*/
 
 module.exports = User;

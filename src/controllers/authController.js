@@ -1,6 +1,7 @@
 const User = require('../models/user');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const pool = require('../config/db');
 
 const { body, validationResult } = require('express-validator');
 
@@ -67,9 +68,9 @@ exports.login = async (req, res) => {
             return res.status(401).json({ message: "Mot de passe incorrect." });
         }
 
-        // générer un Json Web Token
+        // générer un Json Web Token (inclut l'id pour les middlewares de permissions)
         const token = jwt.sign(
-            { matricule_number: user.matricule_number, role: user.role },
+            { id: user.id, matricule_number: user.matricule_number, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: '1h' }
         );
@@ -84,14 +85,14 @@ exports.login = async (req, res) => {
 //Creer un utilisateur (seulement pour les admins)
 exports.createUser = async (req, res) => {
     try{
-        const{ matricule_number, password, role_id } = req.body;
+        const{ matricule_number, password, id_role } = req.body;
 
         // si utilisateur existe
         const existingUser = await User.findByMatricule(matricule_number);
 
         if (existingUser){
             //mise a jour du role de l'utilisateur (s'il existe)
-            await pool.query('UPDATE users SET role_id = ? WHERE matricule_number = ?', [role_id, matricule_number]);
+            await pool.query('UPDATE users SET id_role = ? WHERE matricule_number = ?', [id_role, matricule_number]);
             return res.status(200).json({ message: "Rôle de l'utilisateur mis à jour avec succès !" });
         }
 
@@ -99,7 +100,7 @@ exports.createUser = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         //creer utilisateur, avec le role donné
-        await User.create(matricule_number, hashedPassword, role_id);
+        await User.create(matricule_number, hashedPassword, id_role);
 
         res.status(201).json({ message: "Utilisateur créé avec succès !" });
     }catch(error){

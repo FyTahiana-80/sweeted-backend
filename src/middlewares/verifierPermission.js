@@ -5,9 +5,14 @@ const verifierPermission = (nomPermission) => {
         try{
             const userId = req.user.id; // requete, théoriquement, après authentification 
 
-            //Pour recuperer le role de l'utilisateur
+            // Vérifier que le `req.user` est bien défini (doit provenir du middleware d'authentification)
+            if (!req.user || !req.user.id) {
+                return res.status(401).json({ message: "Utilisateur non authentifié." });
+            }
+
+            // Pour récupérer le rôle de l'utilisateur
             const [user] = await pool.query(
-                'SELECT role_id FROM users WHERE id = ?',
+                'SELECT id_role FROM users WHERE id = ?',
                 [userId]
             );
 
@@ -15,11 +20,13 @@ const verifierPermission = (nomPermission) => {
                 return res.status(404).json({ message: "Utilisateur non trouvé." });
             }
 
-            const roleId = user[0].role_id;
+            const roleId = user[0].id_role;
 
             // Vérifier si le rôle a la permission
             const [permission] = await pool.query(`
-                SELECT permissions.nom FROM permissions JOIN permission_de_role ON permissions.id = permission_de_role.id_permission WHERE permission_de_role.id_role = ? AND permissions.name = ?
+                SELECT permissions.nom FROM permissions
+                JOIN permission_de_role ON permissions.id = permission_de_role.id_permission
+                WHERE permission_de_role.id_role = ? AND permissions.nom = ?
             `, [roleId, nomPermission]);
 
             if (!permission[0]){

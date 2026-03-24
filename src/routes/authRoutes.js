@@ -7,7 +7,7 @@ const authMiddleware = require('../middlewares/authMiddleware');
 /*Routes*/
 
 //pour verifier si user peut creer des utilisateurs
-router.post('/create-user', authMiddleware, permissionMiddleware('create_user'), authController.createUser);
+router.post('/create-user', authMiddleware, verifierPermission('create_user'), authController.createUser);
 
 // Pour inscription
 router.post('/register', authController.register);
