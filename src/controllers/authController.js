@@ -6,11 +6,11 @@ const pool = require('../config/db');
 const { body, validationResult } = require('express-validator');
 
 
-// Format personalisé pour le matricule
+// Format personalisé pour le matricule (flexible pour les années)
 const validateMatricule = (value) => {
-    const regex = /^([0-9]{1,2})-([1-9][0-9]{4})\/25$/;
+    const regex = /^([0-9]{1,2})-([1-9][0-9]{4})\/([0-9]{2})$/;
     if (!regex.test(value)){
-        throw new Error("Le matricule doit être au format XX-XXXXX/25 (ex: 5-40014/25).");
+        throw new Error("Le matricule doit être au format XX-XXXXX/YY (ex: 5-40014/25 ou 37-40014/24).");
     }
     return true;
 };
@@ -37,7 +37,7 @@ exports.register = [
             }
 
             // Hacher le mot de passe
-            const hashedPassword = await bcrypt.hash(password, 10);
+            const hashedPassword = await bcrypt.hash(password, 12);
 
             // Créer l'utilisateur
             await User.create(matricule_number, hashedPassword);
@@ -50,22 +50,20 @@ exports.register = [
 ];
 
 
-
-
 exports.login = async (req, res) => {
     try{
         const { matricule_number, password } = req.body;
 
         // vérifier si l'utilisateur existe
         const user = await User.findByMatricule(matricule_number);
-        if (!user){
-            return res.status(404).json({ message: "Utilisateur non trouvé." });
+        if (!user) {
+            return res.status(401).json({ message: "Identifiants invalides (User)." });
         }
 
         // vérifier le mot de passe
         const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid){
-            return res.status(401).json({ message: "Mot de passe incorrect." });
+        if (!isPasswordValid) {
+            return res.status(401).json({ message: "Identifiants invalides (Password)." });
         }
 
         // générer un Json Web Token (inclut l'id pour les middlewares de permissions)
@@ -82,6 +80,26 @@ exports.login = async (req, res) => {
 };
 
 
+exports.getMe = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ message: "Utilisateur non trouvé." });
+        }
+
+        const postCountResult = await pool.query(
+            'SELECT COUNT(*) AS count FROM Posts WHERE id_user = ?',
+            [req.user.id]
+        );
+        const postCount = postCountResult[0][0].count;
+
+        res.status(200).json({ ...user, postCount });
+    } catch (error) {
+        res.status(500).json({ message: "Erreur lors de la récupération du profil.", error });
+    }
+};
+
+
 //Creer un utilisateur (seulement pour les admins)
 exports.createUser = async (req, res) => {
     try{
@@ -92,12 +110,12 @@ exports.createUser = async (req, res) => {
 
         if (existingUser){
             //mise a jour du role de l'utilisateur (s'il existe)
-            await pool.query('UPDATE users SET id_role = ? WHERE matricule_number = ?', [id_role, matricule_number]);
+            await pool.query('UPDATE Users SET id_role = ? WHERE matricule_number = ?', [id_role, matricule_number]);
             return res.status(200).json({ message: "Rôle de l'utilisateur mis à jour avec succès !" });
         }
 
         //hacher mot de passe
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = await bcrypt.hash(password, 12);
 
         //creer utilisateur, avec le role donné
         await User.create(matricule_number, hashedPassword, id_role);
@@ -107,4 +125,3 @@ exports.createUser = async (req, res) => {
         res.status(500).json({ message: "Erreur lors de la création de l'utilisateur.", error });
     }
 };
-

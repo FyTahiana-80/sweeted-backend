@@ -4,7 +4,8 @@ const authController = require('../controllers/authController');
 
 const verifierPermission = require('../middlewares/verifierPermission')
 const authMiddleware = require('../middlewares/authMiddleware');
-/*Routes*/
+
+/* ----Routes---- */
 
 //pour verifier si user peut creer des utilisateurs
 router.post('/create-user', authMiddleware, verifierPermission('create_user'), authController.createUser);
@@ -14,6 +15,9 @@ router.post('/register', authController.register);
 
 // Pour connexion
 router.post('/login', authController.login);
+
+// Profil de l'utilisateur connecté
+router.get('/me', authMiddleware, authController.getMe);
 
 
 
